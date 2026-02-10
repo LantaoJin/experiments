@@ -12,9 +12,9 @@ from pathlib import Path
 def analyze_results(data):
     """Analyze benchmark results and print statistics"""
     
-    print("=" * 60)
-    print("BENCHMARK ANALYSIS")
-    print("=" * 60)
+    print("=" * 100)
+    print("BENCHMARK SUMMARY")
+    print("=" * 100)
     
     # Metadata
     print(f"\nTest Configuration:")
@@ -22,12 +22,31 @@ def analyze_results(data):
     print(f"  Total tests: {data['metadata']['totalTests']}")
     print(f"  Start points: {len(data['metadata']['startPoints'])}")
     
-    # Single Start Analysis
-    print("\n" + "=" * 60)
-    print("SINGLE START VALUE ANALYSIS")
-    print("=" * 60)
+    # Summary Table
+    print("\n" + "=" * 100)
+    print(f"{'maxDepth':<10} {'Avg Latency (ms)':<18} {'Median (ms)':<15} {'Min (ms)':<12} {'Max (ms)':<12} {'Avg Nodes':<12}")
+    print("-" * 100)
     
     max_depths = sorted(set(r['maxDepth'] for r in data['singleStart']))
+    
+    for depth in max_depths:
+        depth_results = [r for r in data['singleStart'] if r['maxDepth'] == depth]
+        
+        latencies = [r['medianLatency'] for r in depth_results]
+        result_counts = [r['resultCount'] for r in depth_results]
+        
+        avg_lat = mean(latencies)
+        med_lat = median(latencies)
+        min_lat = min(latencies)
+        max_lat = max(latencies)
+        avg_nodes = mean(result_counts)
+        
+        print(f"{depth:<10} {avg_lat:<18.2f} {med_lat:<15.2f} {min_lat:<12.2f} {max_lat:<12.2f} {avg_nodes:<12.0f}")
+    
+    # Detailed Single Start Analysis
+    print("\n" + "=" * 100)
+    print("DETAILED SINGLE START VALUE ANALYSIS")
+    print("=" * 100)
     
     for depth in max_depths:
         depth_results = [r for r in data['singleStart'] if r['maxDepth'] == depth]
@@ -45,9 +64,9 @@ def analyze_results(data):
         print(f"  Result Count: {mean(result_counts):.0f} (avg)")
     
     # Multiple Start Analysis
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 100)
     print("MULTIPLE START VALUE ANALYSIS (maxDepth=3)")
-    print("=" * 60)
+    print("=" * 100)
     
     for r in data['multipleStart']:
         print(f"\n{r['numStartValues']} start value(s):")
@@ -55,9 +74,9 @@ def analyze_results(data):
         print(f"  Results: {r['resultCount']} documents")
     
     # Scalability Analysis
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 100)
     print("SCALABILITY ANALYSIS")
-    print("=" * 60)
+    print("=" * 100)
     
     print("\nLatency vs maxDepth:")
     for depth in max_depths:
