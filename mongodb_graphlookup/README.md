@@ -25,6 +25,20 @@ mongosh ldbc test_benchmark.js
 
 Results saved to: `benchmark_results_<timestamp>.txt` and `.json`
 
+### Run with Custom Start Points
+```bash
+mongosh ldbc --eval "var USER_START_POINTS = [123, 456, 789, 1011, 1213]" graphLookup_benchmark.js
+```
+
+Replace the numbers with your desired person IDs. The script will use these instead of random selection.
+
+### Disable Multiple Start Test
+```bash
+mongosh ldbc --eval "var DISABLE_MULTIPLE_START = true" graphLookup_benchmark.js
+```
+
+This will skip the multiple start value test and only run single start tests.
+
 ### Analyze Results
 ```bash
 python3 analyze_benchmark.py
@@ -35,24 +49,24 @@ python3 analyze_benchmark.py
 Following your requirements:
 
 1. **N=10 random starting points** - Randomly selected person IDs
-2. **maxDepth gradient** - Tests [0, 1, 3, 5, 10, 30, 50]
+2. **maxDepth gradient** - Tests [0, 1, 3, 5]
 3. **5 iterations per query** - Median latency recorded
-4. **Multiple start values** - Tests 1-10 start values with maxDepth=3
+4. **Multiple start values** - Tests 10 start values with maxDepth=3
 5. **Statistics** - Comprehensive analysis of all results
 
 ## Test Coverage
 
 ### Single Start Tests
-- 10 start points × 7 maxDepth values = 70 configurations
-- 70 × 5 iterations = 350 queries
+- 10 start points × 4 maxDepth values = 40 configurations
+- 40 × 5 iterations = 200 queries
 
-### Multiple Start Tests  
-- 10 variations (1-10 start values) × 1 maxDepth = 10 configurations
-- 10 × 5 iterations = 50 queries
+### Multiple Start Test  
+- 1 configuration (10 start values, maxDepth=3)
+- 1 × 5 iterations = 5 queries
 
 ### Total
-- **80 test configurations**
-- **400 total queries**
+- **41 test configurations**
+- **205 total queries**
 
 ## Sample Output
 

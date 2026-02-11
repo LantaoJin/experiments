@@ -68,14 +68,15 @@ def analyze_results(data):
         print(f"  Nodes: {mean(node_counts):.0f} (avg)")
     
     # Multiple Start Analysis
-    print("\n" + "=" * 115)
-    print("MULTIPLE START VALUE TEST (maxDepth=3)")
-    print("=" * 115)
-    
-    r = data['multipleStart'][0]
-    print(f"\n{r['numStartValues']} start values:")
-    print(f"  Latency: {r['medianLatency']}ms")
-    print(f"  Edges: {r['edgeCount']}, Nodes: {r['nodeCount']}")
+    if len(data['multipleStart']) > 0:
+        print("\n" + "=" * 115)
+        print("MULTIPLE START VALUE TEST (maxDepth=3)")
+        print("=" * 115)
+        
+        r = data['multipleStart'][0]
+        print(f"\n{r['numStartValues']} start values:")
+        print(f"  Latency: {r['medianLatency']}ms")
+        print(f"  Edges: {r['edgeCount']}, Nodes: {r['nodeCount']}")
     
     # Scalability Analysis
     print("\n" + "=" * 115)
@@ -89,8 +90,11 @@ def analyze_results(data):
         print(f"  maxDepth {depth:2d}: {avg_latency:8.2f}ms")
     
     print("\nLatency vs Number of Start Values (maxDepth=3):")
-    r = data['multipleStart'][0]
-    print(f"  {r['numStartValues']:2d} starts: {r['medianLatency']:8.2f}ms")
+    if len(data['multipleStart']) > 0:
+        r = data['multipleStart'][0]
+        print(f"  {r['numStartValues']:2d} starts: {r['medianLatency']:8.2f}ms")
+    else:
+        print("  (Test disabled)")
 
 def main():
     if len(sys.argv) < 2:

@@ -42,25 +42,26 @@ startPoints.forEach((startId, idx) => {
     
     MAX_DEPTHS.forEach(depth => {
         const result = executeWithMedian(() => {
-            return db.person_knows_person.aggregate([
-                { $match: { person1_id: startId } },
+            return db.person.aggregate([
+                { $match: { id: startId } },
                 { $graphLookup: {
                     from: "person_knows_person",
-                    startWith: "$person2_id",
+                    startWith: "$id",
                     connectFromField: "person2_id",
                     connectToField: "person1_id",
                     as: "connections",
                     maxDepth: depth
-                }}
+                }},
+                { $project: { connectionCount: { $size: "$connections" } } }
             ]).toArray();
         });
         
         // Count edges and nodes separately (not timed)
-        const edgeDocs = db.person_knows_person.aggregate([
-            { $match: { person1_id: startId } },
+        const edgeDocs = db.person.aggregate([
+            { $match: { id: startId } },
             { $graphLookup: {
                 from: "person_knows_person",
-                startWith: "$person2_id",
+                startWith: "$id",
                 connectFromField: "person2_id",
                 connectToField: "person1_id",
                 as: "connections",
@@ -69,11 +70,11 @@ startPoints.forEach((startId, idx) => {
             { $unwind: "$connections" }
         ]).toArray();
         
-        const nodeDocs = db.person_knows_person.aggregate([
-            { $match: { person1_id: startId } },
+        const nodeDocs = db.person.aggregate([
+            { $match: { id: startId } },
             { $graphLookup: {
                 from: "person_knows_person",
-                startWith: "$person2_id",
+                startWith: "$id",
                 connectFromField: "person2_id",
                 connectToField: "person1_id",
                 as: "connections",
