@@ -51,13 +51,42 @@ startPoints.forEach((startId, idx) => {
                     connectToField: "person1_id",
                     as: "connections",
                     maxDepth: depth
-                }},
-                { $unwind: "$connections" },
-                { $group: { _id: "$connections.person2_id" } }
+                }}
             ]).toArray();
         });
         
-        print(`  maxDepth=${depth}: ${result.medianLatency}ms (${result.resultCount} results)`);
+        // Count edges and nodes separately (not timed)
+        const edgeDocs = db.person_knows_person.aggregate([
+            { $match: { person1_id: startId } },
+            { $graphLookup: {
+                from: "person_knows_person",
+                startWith: "$person2_id",
+                connectFromField: "person2_id",
+                connectToField: "person1_id",
+                as: "connections",
+                maxDepth: depth
+            }},
+            { $unwind: "$connections" }
+        ]).toArray();
+        
+        const nodeDocs = db.person_knows_person.aggregate([
+            { $match: { person1_id: startId } },
+            { $graphLookup: {
+                from: "person_knows_person",
+                startWith: "$person2_id",
+                connectFromField: "person2_id",
+                connectToField: "person1_id",
+                as: "connections",
+                maxDepth: depth
+            }},
+            { $unwind: "$connections" },
+            { $group: { _id: "$connections.person2_id" } }
+        ]).toArray();
+        
+        result.edgeCount = edgeDocs.length;
+        result.nodeCount = nodeDocs.length;
+        
+        print(`  maxDepth=${depth}: ${result.medianLatency}ms (${result.edgeCount} edges, ${result.nodeCount} nodes)`);
     });
 });
 

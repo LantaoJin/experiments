@@ -12,7 +12,7 @@ from pathlib import Path
 def analyze_results(data):
     """Analyze benchmark results and print statistics"""
     
-    print("=" * 100)
+    print("\n" + "=" * 100)
     print("BENCHMARK SUMMARY")
     print("=" * 100)
     
@@ -23,9 +23,9 @@ def analyze_results(data):
     print(f"  Start points: {len(data['metadata']['startPoints'])}")
     
     # Summary Table
-    print("\n" + "=" * 100)
-    print(f"{'maxDepth':<10} {'Avg Latency (ms)':<18} {'Median (ms)':<15} {'Min (ms)':<12} {'Max (ms)':<12} {'Avg Nodes':<12}")
-    print("-" * 100)
+    print("\n" + "=" * 115)
+    print(f"{'maxDepth':<10} {'Avg Latency (ms)':<18} {'Median (ms)':<15} {'Min (ms)':<12} {'Max (ms)':<12} {'Avg Edges':<12} {'Avg Nodes':<12}")
+    print("-" * 115)
     
     max_depths = sorted(set(r['maxDepth'] for r in data['singleStart']))
     
@@ -33,26 +33,29 @@ def analyze_results(data):
         depth_results = [r for r in data['singleStart'] if r['maxDepth'] == depth]
         
         latencies = [r['medianLatency'] for r in depth_results]
-        result_counts = [r['resultCount'] for r in depth_results]
+        edge_counts = [r['edgeCount'] for r in depth_results]
+        node_counts = [r['nodeCount'] for r in depth_results]
         
         avg_lat = mean(latencies)
         med_lat = median(latencies)
         min_lat = min(latencies)
         max_lat = max(latencies)
-        avg_nodes = mean(result_counts)
+        avg_edges = mean(edge_counts)
+        avg_nodes = mean(node_counts)
         
-        print(f"{depth:<10} {avg_lat:<18.2f} {med_lat:<15.2f} {min_lat:<12.2f} {max_lat:<12.2f} {avg_nodes:<12.0f}")
+        print(f"{depth:<10} {avg_lat:<18.2f} {med_lat:<15.2f} {min_lat:<12.2f} {max_lat:<12.2f} {avg_edges:<12.0f} {avg_nodes:<12.0f}")
     
     # Detailed Single Start Analysis
-    print("\n" + "=" * 100)
+    print("\n" + "=" * 115)
     print("DETAILED SINGLE START VALUE ANALYSIS")
-    print("=" * 100)
+    print("=" * 115)
     
     for depth in max_depths:
         depth_results = [r for r in data['singleStart'] if r['maxDepth'] == depth]
         
         latencies = [r['medianLatency'] for r in depth_results]
-        result_counts = [r['resultCount'] for r in depth_results]
+        edge_counts = [r['edgeCount'] for r in depth_results]
+        node_counts = [r['nodeCount'] for r in depth_results]
         
         print(f"\nmaxDepth = {depth}")
         print(f"  Latency:")
@@ -61,22 +64,23 @@ def analyze_results(data):
         if len(latencies) > 1:
             print(f"    Std Dev: {stdev(latencies):.2f}ms")
         print(f"    Min: {min(latencies)}ms, Max: {max(latencies)}ms")
-        print(f"  Result Count: {mean(result_counts):.0f} (avg)")
+        print(f"  Edges: {mean(edge_counts):.0f} (avg)")
+        print(f"  Nodes: {mean(node_counts):.0f} (avg)")
     
     # Multiple Start Analysis
-    print("\n" + "=" * 100)
-    print("MULTIPLE START VALUE ANALYSIS (maxDepth=3)")
-    print("=" * 100)
+    print("\n" + "=" * 115)
+    print("MULTIPLE START VALUE TEST (maxDepth=3)")
+    print("=" * 115)
     
-    for r in data['multipleStart']:
-        print(f"\n{r['numStartValues']} start value(s):")
-        print(f"  Latency: {r['medianLatency']}ms")
-        print(f"  Results: {r['resultCount']} documents")
+    r = data['multipleStart'][0]
+    print(f"\n{r['numStartValues']} start values:")
+    print(f"  Latency: {r['medianLatency']}ms")
+    print(f"  Edges: {r['edgeCount']}, Nodes: {r['nodeCount']}")
     
     # Scalability Analysis
-    print("\n" + "=" * 100)
+    print("\n" + "=" * 115)
     print("SCALABILITY ANALYSIS")
-    print("=" * 100)
+    print("=" * 115)
     
     print("\nLatency vs maxDepth:")
     for depth in max_depths:
@@ -85,8 +89,8 @@ def analyze_results(data):
         print(f"  maxDepth {depth:2d}: {avg_latency:8.2f}ms")
     
     print("\nLatency vs Number of Start Values (maxDepth=3):")
-    for r in data['multipleStart']:
-        print(f"  {r['numStartValues']:2d} start(s): {r['medianLatency']:8.2f}ms")
+    r = data['multipleStart'][0]
+    print(f"  {r['numStartValues']:2d} starts: {r['medianLatency']:8.2f}ms")
 
 def main():
     if len(sys.argv) < 2:

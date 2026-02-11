@@ -86,60 +86,117 @@ startPoints.forEach((startId, idx) => {
                     connectToField: "person1_id",
                     as: "connections",
                     maxDepth: depth
-                }},
-                { $unwind: "$connections" },
-                { $group: { _id: "$connections.person2_id" } }
+                }}
             ]).toArray();
         });
         
-        results.singleStart.push({
-            startId: startId,
-            maxDepth: depth,
-            medianLatency: result.medianLatency,
-            latencies: result.allLatencies,
-            resultCount: result.resultCount
-        });
-        
-        print(`    Latency: ${result.medianLatency}ms (${result.resultCount} results)`);
-        results.metadata.totalTests += 1;
-    });
-});
-
-// Step 3: Multiple Start Value Tests
-print("\n=== Step 3: Multiple Start Value Tests (static maxDepth=3) ===");
-
-for (let numStarts = 1; numStarts <= N_START_POINTS; numStarts++) {
-    const currentStarts = startPoints.slice(0, numStarts);
-    print(`\nTesting with ${numStarts} start value(s)...`);
-    
-    const result = executeWithMedian(() => {
-        return db.person_knows_person.aggregate([
-            { $match: { person1_id: { $in: currentStarts } } },
+        // Count edges and nodes separately (not timed)
+        const edgeDocs = db.person_knows_person.aggregate([
+            { $match: { person1_id: startId } },
             { $graphLookup: {
                 from: "person_knows_person",
                 startWith: "$person2_id",
                 connectFromField: "person2_id",
                 connectToField: "person1_id",
                 as: "connections",
-                maxDepth: MULTIPLE_START_DEPTHS
+                maxDepth: depth
+            }},
+            { $unwind: "$connections" }
+        ]).toArray();
+        
+        const nodeDocs = db.person_knows_person.aggregate([
+            { $match: { person1_id: startId } },
+            { $graphLookup: {
+                from: "person_knows_person",
+                startWith: "$person2_id",
+                connectFromField: "person2_id",
+                connectToField: "person1_id",
+                as: "connections",
+                maxDepth: depth
             }},
             { $unwind: "$connections" },
             { $group: { _id: "$connections.person2_id" } }
         ]).toArray();
+        
+        result.edgeCount = edgeDocs.length;
+        result.nodeCount = nodeDocs.length;
+        
+        results.singleStart.push({
+            startId: startId,
+            maxDepth: depth,
+            medianLatency: result.medianLatency,
+            latencies: result.allLatencies,
+            edgeCount: result.edgeCount,
+            nodeCount: result.nodeCount
+        });
+        
+        print(`    Latency: ${result.medianLatency}ms (${result.edgeCount} edges, ${result.nodeCount} nodes)`);
+        results.metadata.totalTests += 1;
     });
-    
-    results.multipleStart.push({
-        numStartValues: numStarts,
-        startIds: currentStarts,
-        maxDepth: MULTIPLE_START_DEPTHS,
-        medianLatency: result.medianLatency,
-        latencies: result.allLatencies,
-        resultCount: result.resultCount
-    });
-    
-    print(`  Latency: ${result.medianLatency}ms (${result.resultCount} results)`);
-    results.metadata.totalTests += 1;
-}
+});
+
+// Step 3: Multiple Start Value Tests
+print("\n=== Step 3: Multiple Start Value Test (10 starts, maxDepth=3) ===");
+
+print(`\nTesting with ${N_START_POINTS} start values...`);
+
+const result = executeWithMedian(() => {
+    return db.person_knows_person.aggregate([
+        { $match: { person1_id: { $in: startPoints } } },
+        { $graphLookup: {
+            from: "person_knows_person",
+            startWith: "$person2_id",
+            connectFromField: "person2_id",
+            connectToField: "person1_id",
+            as: "connections",
+            maxDepth: MULTIPLE_START_DEPTHS
+        }}
+    ]).toArray();
+});
+
+// Count edges and nodes separately (not timed)
+const edgeDocs = db.person_knows_person.aggregate([
+    { $match: { person1_id: { $in: startPoints } } },
+    { $graphLookup: {
+        from: "person_knows_person",
+        startWith: "$person2_id",
+        connectFromField: "person2_id",
+        connectToField: "person1_id",
+        as: "connections",
+        maxDepth: MULTIPLE_START_DEPTHS
+    }},
+    { $unwind: "$connections" }
+]).toArray();
+
+const nodeDocs = db.person_knows_person.aggregate([
+    { $match: { person1_id: { $in: startPoints } } },
+    { $graphLookup: {
+        from: "person_knows_person",
+        startWith: "$person2_id",
+        connectFromField: "person2_id",
+        connectToField: "person1_id",
+        as: "connections",
+        maxDepth: MULTIPLE_START_DEPTHS
+    }},
+    { $unwind: "$connections" },
+    { $group: { _id: "$connections.person2_id" } }
+]).toArray();
+
+result.edgeCount = edgeDocs.length;
+result.nodeCount = nodeDocs.length;
+
+results.multipleStart.push({
+    numStartValues: N_START_POINTS,
+    startIds: startPoints,
+    maxDepth: MULTIPLE_START_DEPTHS,
+    medianLatency: result.medianLatency,
+    latencies: result.allLatencies,
+    edgeCount: result.edgeCount,
+    nodeCount: result.nodeCount
+});
+
+print(`  Latency: ${result.medianLatency}ms (${result.edgeCount} edges, ${result.nodeCount} nodes)`);
+results.metadata.totalTests += 1;
 
 // Step 4: Statistics
 print("\n\n=== STATISTICS SUMMARY ===");
@@ -150,25 +207,26 @@ MAX_DEPTHS.forEach(depth => {
     const depthResults = results.singleStart.filter(r => r.maxDepth === depth);
     
     const latencies = depthResults.map(r => r.medianLatency);
-    const resultCounts = depthResults.map(r => r.resultCount);
+    const edgeCounts = depthResults.map(r => r.edgeCount);
+    const nodeCounts = depthResults.map(r => r.nodeCount);
     
     const avgLatency = latencies.reduce((a,b)=>a+b,0) / latencies.length;
     const minLatency = Math.min(...latencies);
     const maxLatency = Math.max(...latencies);
-    const avgResults = resultCounts.reduce((a,b)=>a+b,0) / resultCounts.length;
+    const avgEdges = edgeCounts.reduce((a,b)=>a+b,0) / edgeCounts.length;
+    const avgNodes = nodeCounts.reduce((a,b)=>a+b,0) / nodeCounts.length;
     
     print(`\nmaxDepth=${depth}:`);
     print(`  Latency - Avg: ${avgLatency.toFixed(2)}ms, Min: ${minLatency}ms, Max: ${maxLatency}ms`);
-    print(`  Avg Results: ${avgResults.toFixed(0)} documents`);
+    print(`  Avg Edges: ${avgEdges.toFixed(0)}, Avg Nodes: ${avgNodes.toFixed(0)}`);
 });
 
 // Multiple Start Statistics
-print("\n--- Multiple Start Value Tests (maxDepth=3) ---");
-results.multipleStart.forEach(r => {
-    print(`\n${r.numStartValues} start value(s):`);
-    print(`  Latency: ${r.medianLatency}ms`);
-    print(`  Results: ${r.resultCount} documents`);
-});
+print("\n--- Multiple Start Value Test (maxDepth=3) ---");
+const r = results.multipleStart[0];
+print(`\n${r.numStartValues} start values:`);
+print(`  Latency: ${r.medianLatency}ms`);
+print(`  Edges: ${r.edgeCount}, Nodes: ${r.nodeCount}`);
 
 // Scalability Analysis
 print("\n--- Scalability Analysis ---");
@@ -180,9 +238,8 @@ MAX_DEPTHS.forEach(depth => {
 });
 
 print("\nLatency vs Number of Start Values (maxDepth=3):");
-results.multipleStart.forEach(r => {
-    print(`  ${r.numStartValues.toString().padStart(2)} start(s): ${r.medianLatency.toFixed(2).padStart(10)}ms`);
-});
+const multiResult = results.multipleStart[0];
+print(`  ${multiResult.numStartValues.toString().padStart(2)} starts: ${multiResult.medianLatency.toFixed(2).padStart(10)}ms`);
 
 print(`\nTotal tests executed: ${results.metadata.totalTests}`);
 print(`Total queries run: ${results.metadata.totalTests * ITERATIONS}`);
